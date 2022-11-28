@@ -1,0 +1,1 @@
+from .rl_obs_env_wrapper import CosineSineObservation
