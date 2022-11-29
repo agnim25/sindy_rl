@@ -118,15 +118,14 @@ for setting in settings:
     with open('model.pkl', 'rb') as f:
         model = pickle.load(f)
 
-
     env = gym.make('ct_{}-{}'.format(env_name, ver))
-    env.use_sindy = True
-    env.model = model
+    env.use_sindy_model()
 
     # env = CosineSineObservation(env)
-    eval_env = gym.make('ct_{}-{}'.format(env_name, ver))
-    eval_env.use_sindy = True
-    eval_env.model = model
+    # eval_env = gym.make('ct_{}-{}'.format(env_name, ver))
+    # eval_env.use_sindy_model()
+
+
     # eval_env = CosineSineObservation(eval_env)
     # check_env(env)
     env = Monitor(env, train_dir)
@@ -135,8 +134,8 @@ for setting in settings:
     # callback = SaveOnBestTrainingRewardCallback(check_freq=1000, log_dir=log_dir)
     stoptraining_callback = StopTrainingOnRewardThreshold(reward_threshold=target_episodic_reward)
     #assert method in ('ppo', 'sac', 'ddpg', 'trpo', 'a2c', 'acktr'), "Method not recognized"
-    callback = EvalCallback(eval_env, stoptraining_callback, n_eval_episodes=1, eval_freq=eval_freq, log_path=train_dir,
-                            best_model_save_path=best_dir)
+    # callback = EvalCallback(eval_env, stoptraining_callback, n_eval_episodes=1, eval_freq=eval_freq, log_path=train_dir,
+    #                         best_model_save_path=best_dir)
 
 
 
@@ -662,7 +661,8 @@ action_noise = OrnsteinUhlenbeckActionNoise(mean=np.zeros(n_actions), sigma=floa
 
 model = DDPG(MlpPolicyDDPG, env, verbose=1, param_noise=param_noise, action_noise=action_noise, tensorboard_log=board_dir)
 model.learn(total_timesteps=400000)
-model.save("ddpg_cartpole")
+model.save("ddpg_mountaincar_sindy")
+
 
 
 """

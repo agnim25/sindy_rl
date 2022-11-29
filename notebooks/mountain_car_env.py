@@ -18,10 +18,8 @@ import numpy as np
 import gym
 from gym import spaces, logger
 from gym.envs.classic_control import utils
-from gym.utils import seeding
 from gym.error import DependencyNotInstalled
 import pysindy as ps
-import matplotlib.pyplot as plt
 
 
 class CTMountainCarEnv(gym.Env):
@@ -118,7 +116,6 @@ class CTMountainCarEnv(gym.Env):
 
         self.model = model
         self.use_sindy = use_sindy
-        self.np_random, seed = seeding.np_random(None)
 
     def step(self, action):
 
@@ -174,11 +171,11 @@ class CTMountainCarEnv(gym.Env):
         return self.state, reward, terminated, {}
 
     def reset(self, *, seed=None, options=None):
+        super().reset(seed=seed)
         # Note that if you use custom reset bounds, it may lead to out-of-bound
         # state/observations.
         low, high = utils.maybe_parse_reset_bounds(options, -0.6, -0.4)
-#         self.state = np.array([self.np_random.uniform(low=low, high=high), 0], dtype=np.float32)
-        self.state = np.array([-0.5, 0.])
+        self.state = np.array([self.np_random.uniform(low=low, high=high), 0], dtype=np.float32)
 
         if self.render_mode == "human":
             self.render()
@@ -298,69 +295,33 @@ class CTMountainCarEnv(gym.Env):
             pygame.quit()
             self.isopen = False
 
-    def runEpisodeBB(self, heuristic=True, agent=None):
-        env = gym.make("MountainCarContinuous-v0")
-        obs = list(env.reset()[0])
-        state_action = []
-        states = []
-        actions = []
-        num_episodes = 0
-        k = 2
-        action = env.action_space.sample()
-        action = env.action_space.sample()
-        for i in range(100000):
-            if heuristic:
-                action = 1
-                # action = env.action_space.sample() if np.random.uniform() < 0.2 else action
-            if agent == None:
-                curr_action = action
-                action = -1*action
-                action = env.action_space.sample()
-            else:
-                action = agent.select_action(obs, evaluate=True)
-            #temp = 10 if action == 1 else -10
-            state_action.append([*obs, action])
-            states.append([*obs])
-            actions.append(action)
-            next_obs, reward, done = env.step(action)[:3]
-            obs = np.copy(next_obs)
-            if done:
-                obs, _ = env.reset()
-                num_episodes += 1
-                if num_episodes == 1:
-                    break
-        # print("Number of episodes in data collection ", num_episodes)
-        return np.array(state_action), np.array(states), np.array(actions)
-
-    def create_transitionfunction(self, agent=None, num_trajs=1):
-        states = []
-        actions = []
-        print("Creating the transition function")
-        for i in range(num_trajs):
-            xva, state, action = self.runEpisodeBB(agent)
-            states.append(state)
-            actions.append(action)
-            print(len(state))
-        plt.hist([len(state) for state in states])
-        plt.show()
-    
-        # functions = [lambda x : 1, lambda x : x, lambda x : x**2,  lambda x: np.sin(x), lambda x : np.cos(x), 
-        #             lambda x: np.sin(2*x), lambda x : np.cos(2*x), lambda x: np.sin(3*x), lambda x : np.cos(3*x)]
-        # lib = ps.CustomLibrary(library_functions=functions)
-        # optimizer = ps.optimizers.STLSQ(threshold=0.0001, alpha=0)
-        lib = ps.ConcatLibrary([ps.PolynomialLibrary(), ps.FourierLibrary()])
-        optimizer = ps.SR3(threshold=0.0001, thresholder='l1',trimming_fraction=0.1,max_iter=10000)
-        #lib = PolynomialLibrary()
-        der = ps.SINDyDerivative()
-        der = ps.SmoothedFiniteDifference()
-        model = ps.SINDy(discrete_time=True, feature_library=lib, differentiation_method=der,
-                    optimizer=optimizer)
-        model.fit(states, u=actions, multiple_trajectories=True)
-        model.print()
-        print(model.score(states, u=actions, multiple_trajectories=True))
-        return model
-
     def use_sindy_model(self):
-        self.model = self.create_transitionfunction(num_trajs=10)
-        
-    
+        print('started sindy training')
+        env = gym.make('MountainCarContinuous-v0')
+
+        trajectories = []
+        actions = []
+        num_trajs = 100
+        for traj in range(num_trajs):
+            env.reset()
+            obs = []
+            ac = []
+            for i in range(1000):
+                a = env.action_space.sample()
+                ob, reward, terminated = env.step(a)[:3]
+                if terminated:
+                    break
+                obs.append(ob)
+                ac.append(a)
+            trajectories.append(np.array(obs))
+            actions.append(np.array(ac))
+        optimizer = ps.SR3(threshold=0.0001, max_iter=10000)
+        der = ps.SmoothedFiniteDifference()
+            
+        model = ps.SINDy(discrete_time=True, optimizer=optimizer,
+                        differentiation_method=der,
+                        feature_library=ps.ConcatLibrary([ps.FourierLibrary(), 
+                                                        ps.PolynomialLibrary()]))
+        model.fit(x=trajectories,u=actions,multiple_trajectories=True)
+        self.model = model
+        print('finished sindy training, score = ', model.score(trajectories,u=actions,multiple_trajectories=True))
