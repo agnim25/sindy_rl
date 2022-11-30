@@ -916,7 +916,6 @@ class DDPG(OffPolicyRLModel):
                             else:
                                 # Avoid changing the original ones
                                 obs_, new_obs_, reward_ = obs, new_obs, reward
-                                
 
                             self._store_transition(obs_, action, reward_, new_obs_, done, info)
                             obs = new_obs

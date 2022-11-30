@@ -11,8 +11,8 @@ from stable_baselines import DDPG
 from stable_baselines import TRPO
 from stable_baselines import A2C
 from stable_baselines import ACKTR
-import gym_ct_cartpole
-from gym_ct_cartpole import CosineSineObservation
+import gym_custom
+from gym_custom import CosineSineObservation
 from stable_baselines.common.env_checker import check_env
 # from stable_baselines.common.evaluation import evaluate_policy
 from stable_baselines.bench import Monitor

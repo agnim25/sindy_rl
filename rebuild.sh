@@ -1,4 +1,4 @@
 #!/bin/bash
-cd gym-ct_cartpole
+cd gym_custom
 pip install -e .
 cd ../
